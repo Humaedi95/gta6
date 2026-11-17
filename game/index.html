@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solmar Heat — Open-World Crime in Solmar Bay</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #0b0e1a; overflow: hidden; height: 100%; font-family: 'Segoe UI', Arial, sans-serif; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #game { width: 1280px; height: 720px; max-width: 100vw; max-height: 100vh; display: block; background: #1a2b1a; cursor: crosshair; }
+  .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; background: rgba(8, 10, 24, 0.55); z-index: 5; }
+  .hidden { display: none !important; }
+  .title { font-size: 84px; font-weight: 900; letter-spacing: 6px; margin: 0; line-height: 0.95;
+    background: linear-gradient(180deg, #ffd75e 15%, #ff7a3c 55%, #e23a6e 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 4px 30px rgba(255, 122, 60, 0.35); }
+  .subtitle { font-size: 22px; letter-spacing: 8px; color: #9fd8ff; margin: 10px 0 4px; text-transform: uppercase; }
+  .tagline { font-size: 15px; color: #d7e3f4; margin: 6px 0 26px; max-width: 640px; line-height: 1.5; }
+  .btn { display: block; width: 300px; margin: 8px auto; padding: 13px 20px; font-size: 18px; font-weight: 700;
+    letter-spacing: 2px; color: #10131f; background: linear-gradient(180deg, #ffd75e, #ff9a3c); border: none;
+    border-radius: 8px; cursor: pointer; box-shadow: 0 4px 18px rgba(255, 154, 60, 0.45); }
+  .btn:hover { filter: brightness(1.12); }
+  .btn.secondary { background: rgba(255,255,255,0.12); color: #eaf2ff; box-shadow: none; border: 1px solid rgba(255,255,255,0.35); }
+  .panel { background: rgba(10, 14, 30, 0.92); border: 1px solid rgba(255, 215, 94, 0.5); border-radius: 12px; padding: 26px 34px; max-width: 620px; }
+  .panel h2 { margin: 0 0 12px; color: #ffd75e; letter-spacing: 3px; font-size: 26px; }
+  .panel p { margin: 8px 0; color: #d7e3f4; font-size: 15px; line-height: 1.6; text-align: left; }
+  .panel b { color: #ffd75e; }
+  .big { font-size: 64px; font-weight: 900; letter-spacing: 6px; margin: 0; }
+  .big.red { color: #ff4d5e; text-shadow: 0 0 34px rgba(255, 77, 94, 0.6); }
+  .big.blue { color: #5eb2ff; text-shadow: 0 0 34px rgba(94, 178, 255, 0.6); }
+  .small { color: #aebadb; font-size: 13px; margin-top: 18px; }
+  kbd { background: #232a44; border: 1px solid #4a5578; border-radius: 4px; padding: 1px 7px; font-family: inherit; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="1280" height="720"></canvas>
+
+  <div id="titleScreen" class="overlay">
+    <h1 class="title">SOLMAR<br>HEAT</h1>
+    <div class="subtitle">Open-World Crime &middot; Solmar Bay</div>
+    <p class="tagline">Sun-soaked streets, fast cars and faster money. Work for fixer Mara Voss,
+      run five story jobs across Solmar Bay, steal what you need, and stay one step ahead of the
+      Solmar Bay Police Department.</p>
+    <button class="btn" id="btnNew">NEW GAME</button>
+    <button class="btn secondary hidden" id="btnContinue">CONTINUE</button>
+    <button class="btn secondary" id="btnHow">HOW TO PLAY</button>
+    <div class="small">An original game. No real city, person or brand is depicted. Keyboard + mouse.</div>
+  </div>
+
+  <div id="howScreen" class="overlay hidden">
+    <div class="panel">
+      <h2>HOW TO PLAY</h2>
+      <p><b>WASD / Arrows</b> — walk &amp; drive &nbsp; <b>Shift</b> — sprint &nbsp; <b>E</b> — steal / enter / exit car</p>
+      <p><b>Mouse</b> — aim &nbsp; <b>Click</b> — shoot &nbsp; <b>F</b> — punch &nbsp; <b>Space</b> — handbrake</p>
+      <p><b>P</b> — pause &nbsp; <b>M</b> — mute &nbsp; <b>H</b> — toggle help</p>
+      <p>Follow the <b>yellow marker</b> and the arrow at the edge of the screen to reach each job.
+         Stealing cars, hurting people and shooting raise your <b>wanted level</b> — the police will chase you.
+         Lose them, or drive through the <b>Lube &amp; Tune</b> garage to clear your name for $250.</p>
+      <p>Earn cash from jobs, taxi fares and the 20 golden shells hidden around the bay.
+         Buy ammo at <b>Ironclad Arms</b>. Your progress saves automatically.</p>
+      <button class="btn" id="btnHowBack">BACK</button>
+    </div>
+  </div>
+
+  <div id="pauseScreen" class="overlay hidden">
+    <div class="panel">
+      <h2>PAUSED</h2>
+      <p id="pauseStats"></p>
+      <button class="btn" id="btnResume">RESUME</button>
+      <button class="btn secondary" id="btnSave">SAVE GAME</button>
+      <button class="btn secondary" id="btnMute">SOUND: ON</button>
+      <button class="btn secondary" id="btnQuit">QUIT TO TITLE</button>
+    </div>
+  </div>
+
+  <div id="bustedScreen" class="overlay hidden">
+    <p class="big blue">BUSTED</p>
+    <p class="tagline">The Solmar Bay PD caught up with you. Bail cost you $200.</p>
+    <button class="btn" id="btnBusted">BACK ON THE STREET</button>
+  </div>
+
+  <div id="wastedScreen" class="overlay hidden">
+    <p class="big red">WASTED</p>
+    <p class="tagline">You woke up at the Solmar Bay clinic, $150 lighter and one story poorer.</p>
+    <button class="btn" id="btnWasted">GET UP</button>
+  </div>
+
+  <div id="endScreen" class="overlay hidden">
+    <div class="panel">
+      <h2>KING OF SOLMAR BAY</h2>
+      <p id="endStats"></p>
+      <p>You ran every job, out-drove the whole department and walked away with the score.
+         Solmar Bay is yours now, Danny Rook.</p>
+      <button class="btn" id="btnFreeRoam">KEEP PLAYING (FREE ROAM)</button>
+      <button class="btn secondary" id="btnEndTitle">QUIT TO TITLE</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
