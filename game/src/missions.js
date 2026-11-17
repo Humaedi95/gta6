@@ -1,6 +1,7 @@
 // Five story jobs for fixer Mara Voss, plus the taxi-fare side activity.
-// Each mission is a list of stages; a stage completes when the player reaches
-// its target (or waits out its timer). Rewards are paid on completion.
+// A mission is a list of stages; a stage completes when the player reaches
+// its target, waits out its timer, or grabs the right car. Rewards pay out
+// when the last stage clears.
 import { G, say } from './state.js';
 import { dist, fmtCash } from './util.js';
 import { addWanted, makeCar, spawnPolice } from './actors.js';
@@ -8,7 +9,8 @@ import { sfxMission, sfxChime } from './audio.js';
 
 export const MISSIONS = [
   {
-    id: 'first-fare', title: 'First Fare',
+    id: 'first-fare',
+    title: 'First Fare',
     intro: 'Mara Voss: "Danny. A client needs a ride from the plaza to Hotel Marisol. Get a car, pick him up, and don\'t keep him waiting."',
     reward: 150,
     stages: [
@@ -18,7 +20,8 @@ export const MISSIONS = [
     ],
   },
   {
-    id: 'repo-man', title: 'Repo Man',
+    id: 'repo-man',
+    title: 'Repo Man',
     intro: 'Mara Voss: "A red sports coupe is parked by the airfield. The owner stopped paying. Bring it to Lube & Tune — and if the cops notice, lose them."',
     reward: 400,
     stages: [
@@ -27,7 +30,8 @@ export const MISSIONS = [
     ],
   },
   {
-    id: 'hot-package', title: 'Hot Package',
+    id: 'hot-package',
+    title: 'Hot Package',
     intro: 'Mara Voss: "A package is waiting at the docks. The police are already sniffing around — grab it and get it to the safehouse in 90 seconds."',
     reward: 600,
     stages: [
@@ -36,7 +40,8 @@ export const MISSIONS = [
     ],
   },
   {
-    id: 'solmar-savings', title: 'Solmar Savings',
+    id: 'solmar-savings',
+    title: 'Solmar Savings',
     intro: 'Mara Voss: "The bank keeps its Friday cash in the back room. Walk in, hold the room for five seconds, then get out and lose the whole department."',
     reward: 1200,
     stages: [
@@ -46,7 +51,8 @@ export const MISSIONS = [
     ],
   },
   {
-    id: 'the-big-score', title: 'The Big Score',
+    id: 'the-big-score',
+    title: 'The Big Score',
     intro: 'Mara Voss: "Last one, Danny. A crate at the docks, a ledger at the hotel, then the safehouse. The whole city will be looking for you. Make it count."',
     reward: 3000,
     stages: [
@@ -67,11 +73,14 @@ export function startMission(index) {
   return true;
 }
 
+// Where the beacon and the minimap blip should point right now.
 export function missionTarget() {
   if (!G.mission) return null;
   const st = G.mission.def.stages[G.mission.stage];
   if (!st) return null;
-  if (st.kind === 'steal' && G.mission.targetCar) return { x: G.mission.targetCar.x, y: G.mission.targetCar.y, text: st.text };
+  if (st.kind === 'steal' && G.mission.targetCar) {
+    return { x: G.mission.targetCar.x, y: G.mission.targetCar.y, text: st.text };
+  }
   if (st.zone) {
     const z = G.city.zones[st.zone];
     return { x: z.x, y: z.y, text: st.text, name: z.name };
@@ -79,9 +88,14 @@ export function missionTarget() {
   return null;
 }
 
-function stageTargetPos(st) {
-  if (st.kind === 'steal' && G.mission.targetCar) return { x: G.mission.targetCar.x, y: G.mission.targetCar.y };
-  if (st.zone) { const z = G.city.zones[st.zone]; return { x: z.x, y: z.y }; }
+function targetPos(st) {
+  if (st.kind === 'steal' && G.mission.targetCar) {
+    return { x: G.mission.targetCar.x, y: G.mission.targetCar.y };
+  }
+  if (st.zone) {
+    const z = G.city.zones[st.zone];
+    return { x: z.x, y: z.y };
+  }
   return null;
 }
 
@@ -94,10 +108,13 @@ export function updateMission(dt) {
   const px = p.car ? p.car.x : p.x;
   const py = p.car ? p.car.y : p.y;
 
-  // Stage setup, once.
+  // One-time setup for this stage: heat, the target car, the countdown.
   if (!st._setup) {
     st._setup = true;
-    if (st.wanted && G.wanted < st.wanted) { G.wanted = st.wanted; spawnPolice(); }
+    if (st.wanted && G.wanted < st.wanted) {
+      G.wanted = st.wanted;
+      spawnPolice();
+    }
     if (st.kind === 'steal') {
       const z = G.city.zones[st.zone];
       const c = makeCar(st.carType || 'sports', z.x + 30, z.y, 0, 'parked');
@@ -112,46 +129,50 @@ export function updateMission(dt) {
 
   if (st.timer) {
     m.timer -= dt;
-    if (m.timer <= 0) { failMission('Out of time — the job fell through.'); return; }
+    if (m.timer <= 0) {
+      failMission('Out of time — the job fell through.');
+      return;
+    }
   }
 
   if (st.kind === 'car') {
-    if (p.car) completeStage();
+    if (p.car) advanceStage();
     return;
   }
   if (st.kind === 'steal') {
-    if (p.car && p.car.missionCar) completeStage();
+    if (p.car && p.car.missionCar) advanceStage();
     return;
   }
   if (st.kind === 'deliver') {
+    const t = targetPos(st);
     if (p.car && p.car.missionCar) {
-      const t = stageTargetPos(st);
-      if (dist(px, py, t.x, t.y) < st.radius) completeStage();
+      if (dist(px, py, t.x, t.y) < st.radius) advanceStage();
     } else if (!p.car) {
-      // Lost the car: respawn the stage's car nearby.
+      // The job car is gone: Mara sends another one, back a stage.
       say('You lost the coupe — Mara sent another one to the airfield.', 4);
       m.stage = Math.max(0, m.stage - 1);
-      const prev = m.def.stages[m.stage];
-      prev._setup = false;
+      m.def.stages[m.stage]._setup = false;
       m.targetCar = null;
     }
     return;
   }
   if (st.kind === 'wait') {
-    const t = stageTargetPos(st);
+    const t = targetPos(st);
     if (dist(px, py, t.x, t.y) < st.radius) {
       m.waitT += dt;
       G.objective = st.text + ' (' + Math.ceil(st.wait - m.waitT) + 's)';
-      if (m.waitT >= st.wait) completeStage();
-    } else m.waitT = 0;
+      if (m.waitT >= st.wait) advanceStage();
+    } else {
+      m.waitT = 0;
+    }
     return;
   }
-  // goto
-  const t = stageTargetPos(st);
-  if (t && dist(px, py, t.x, t.y) < st.radius) completeStage();
+  // Plain "go here" stage.
+  const t = targetPos(st);
+  if (t && dist(px, py, t.x, t.y) < st.radius) advanceStage();
 }
 
-function completeStage() {
+function advanceStage() {
   const m = G.mission;
   const st = m.def.stages[m.stage];
   st._setup = false;
@@ -159,7 +180,7 @@ function completeStage() {
   m.stage++;
   sfxChime();
   if (m.stage >= m.def.stages.length) {
-    completeMission();
+    finishMission();
   } else {
     const next = m.def.stages[m.stage];
     G.objective = next.text;
@@ -167,7 +188,7 @@ function completeStage() {
   }
 }
 
-function completeMission() {
+function finishMission() {
   const m = G.mission;
   G.cash += m.def.reward;
   G.missionsDone++;
@@ -180,17 +201,14 @@ function completeMission() {
     G.storyDone = true;
     if (!G.freeRoam) {
       G.mode = 'complete';
-      const el = document.getElementById('endScreen');
       document.getElementById('endStats').textContent =
         'Jobs finished: ' + G.missionsDone + '  •  Cash: ' + fmtCash(G.cash) +
         '  •  Cars stolen: ' + G.stats.stolen + '  •  Fares driven: ' + G.stats.fares;
-      el.classList.remove('hidden');
+      document.getElementById('endScreen').classList.remove('hidden');
     }
   } else {
     setTimeout(() => {
-      if (G.mode === 'play' && !G.mission) {
-        startMission(G.missionIndex);
-      }
+      if (G.mode === 'play' && !G.mission) startMission(G.missionIndex);
     }, 2500);
   }
 }
@@ -201,11 +219,10 @@ export function failMission(why) {
   say(why + ' Talk to Mara at the safehouse to try again.', 5);
   G.mission = null;
   G.objective = '';
-  // Retry from the safehouse: the player can restart by driving there.
   G.retryMission = m.def;
 }
 
-// Start a taxi fare: a waiting pedestrian flagged the player's taxi (or any car).
+// A taxi fare starts when the player, in a car, stops near a pedestrian.
 export function tryStartFare() {
   if (G.fare || !G.player.car) return;
   for (const ped of G.peds) {
@@ -213,7 +230,8 @@ export function tryStartFare() {
     if (dist(ped.x, ped.y, G.player.car.x, G.player.car.y) < 70) {
       ped.waiting = true;
       G.farePed = ped;
-      const z = pickZone();
+      const zones = Object.values(G.city.zones);
+      const z = zones[Math.floor(Math.random() * zones.length)];
       G.fare = { tx: z.x, ty: z.y, name: z.name, paid: 40 + Math.floor(Math.random() * 60), timer: 75 };
       say('Fare! Take them to ' + z.name + ' — ' + fmtCash(G.fare.paid), 4);
       G.objective = 'Taxi fare: ' + z.name;
@@ -222,31 +240,37 @@ export function tryStartFare() {
   }
 }
 
-function pickZone() {
-  const zs = Object.values(G.city.zones);
-  return zs[Math.floor(Math.random() * zs.length)];
-}
-
 export function updateFare(dt) {
   if (!G.fare) return;
   const p = G.player;
-  if (!p.car) { cancelFare('You left the car — the fare walked away.'); return; }
+  if (!p.car) {
+    dropFare('You left the car — the fare walked away.');
+    return;
+  }
   G.fare.timer -= dt;
-  if (G.fare.timer <= 0) { cancelFare('Too slow — the fare got out.'); return; }
+  if (G.fare.timer <= 0) {
+    dropFare('Too slow — the fare got out.');
+    return;
+  }
   if (dist(p.car.x, p.car.y, G.fare.tx, G.fare.ty) < 80) {
     G.cash += G.fare.paid;
     G.stats.fares++;
     say('Fare paid +' + fmtCash(G.fare.paid), 3);
     sfxChime();
-    if (G.farePed) { G.farePed.waiting = false; G.peds = G.peds.filter(q => q !== G.farePed); }
-    G.fare = null; G.farePed = null;
+    if (G.farePed) {
+      G.farePed.waiting = false;
+      G.peds = G.peds.filter((q) => q !== G.farePed);
+    }
+    G.fare = null;
+    G.farePed = null;
     if (!G.mission) G.objective = '';
   }
 }
 
-function cancelFare(why) {
+function dropFare(why) {
   say(why, 3);
   if (G.farePed) G.farePed.waiting = false;
-  G.fare = null; G.farePed = null;
+  G.fare = null;
+  G.farePed = null;
   if (!G.mission) G.objective = '';
 }

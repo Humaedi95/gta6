@@ -1,5 +1,5 @@
-// Save / load through localStorage. Autosave runs after each mission and
-// every 30 seconds of play; Continue on the title screen restores a save.
+// Save / load through localStorage. The game autosaves after each mission
+// and every 30 seconds of play; Continue on the title screen restores a save.
 import { G } from './state.js';
 import { spawnWorld } from './actors.js';
 import { buildCity } from './city.js';
@@ -7,22 +7,38 @@ import { buildCity } from './city.js';
 const KEY = 'solmar-heat-save-v1';
 
 export function hasSave() {
-  try { return !!localStorage.getItem(KEY); } catch (e) { return false; }
+  try {
+    return !!localStorage.getItem(KEY);
+  } catch (e) {
+    return false;
+  }
 }
 
 export function saveGame() {
   if (!G.player) return false;
   try {
     const data = {
-      v: 1, cash: G.cash, health: G.health, ammo: G.ammo, hasPistol: G.hasPistol,
-      shells: G.shells, shellIds: G.city.shells.filter(s => s.taken).map(s => s.id),
-      missionsDone: G.missionsDone, missionIndex: G.missionIndex,
-      clock: G.clock, px: G.player.x, py: G.player.y, angle: G.player.angle,
-      stats: G.stats, savedAt: Date.now(),
+      v: 1,
+      cash: G.cash,
+      health: G.health,
+      ammo: G.ammo,
+      hasPistol: G.hasPistol,
+      shells: G.shells,
+      shellIds: G.city.shells.filter((s) => s.taken).map((s) => s.id),
+      missionsDone: G.missionsDone,
+      missionIndex: G.missionIndex,
+      clock: G.clock,
+      px: G.player.x,
+      py: G.player.y,
+      angle: G.player.angle,
+      stats: G.stats,
+      savedAt: Date.now(),
     };
     localStorage.setItem(KEY, JSON.stringify(data));
     return true;
-  } catch (e) { return false; }
+  } catch (e) {
+    return false;
+  }
 }
 
 export function loadGame() {
@@ -30,11 +46,17 @@ export function loadGame() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     return JSON.parse(raw);
-  } catch (e) { return null; }
+  } catch (e) {
+    return null;
+  }
 }
 
 export function clearSave() {
-  try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+  try {
+    localStorage.removeItem(KEY);
+  } catch (e) {
+    /* ignore */
+  }
 }
 
 // Apply a loaded save onto a fresh world. Returns true when a save existed.
@@ -51,13 +73,21 @@ export function applySave(data) {
   G.missionIndex = data.missionIndex ?? 0;
   G.clock = data.clock ?? 14 * 60 + 20;
   G.stats = Object.assign({ stolen: 0, fares: 0, shots: 0, kos: 0, distance: 0 }, data.stats);
-  for (const s of G.city.shells) if ((data.shellIds || []).includes(s.id)) s.taken = true;
+  for (const s of G.city.shells) {
+    if ((data.shellIds || []).includes(s.id)) s.taken = true;
+  }
   G.player = {
     x: data.px ?? G.city.zones.safehouse.x,
     y: data.py ?? G.city.zones.safehouse.y,
-    angle: data.angle ?? 0, speed: 0, car: null, walkPhase: 0, punchT: 0, shootT: 0,
+    angle: data.angle ?? 0,
+    speed: 0,
+    car: null,
+    walkPhase: 0,
+    punchT: 0,
+    shootT: 0,
   };
-  G.cam.x = G.player.x; G.cam.y = G.player.y;
+  G.cam.x = G.player.x;
+  G.cam.y = G.player.y;
   G.wanted = 0;
   G.mission = null;
   G.objective = '';

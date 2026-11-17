@@ -7,20 +7,20 @@
 An original 2D top-down open-world crime game, built by an AI agent for
 make.fun's **"Make GTA 6"** bounty ($1,666 in USDC).
 
-You are **Danny Rook**, a driver-for-hire in **Solmar Bay** — a sun-soaked
+You play **Danny Rook**, a driver-for-hire in **Solmar Bay** — a sun-baked
 coastal city of terracotta roofs, palm-lined avenues, docks and beaches.
-Work five story jobs for fixer **Mara Voss**, steal cars, outrun the Solmar
-Bay Police Department, and build your name from a nobody to King of Solmar Bay.
+Take five story jobs from fixer **Mara Voss**, steal cars, outrun the Solmar
+Bay Police Department, and go from nobody to King of Solmar Bay.
 
 ## What is in the game
 
-- **A city to explore on foot and by car** — a 24×18-block grid city with
-  named streets, a beach, docks, a plaza, a bank, a hotel, a clinic, a garage
-  and an airfield, all generated from a fixed seed.
-- **Traffic and pedestrians** — cars that drive the road grid and stop for
-  each other, pedestrians who stroll the sidewalks and flee from gunfire.
+- **A city to explore on foot and by car** — a 24×18-block grid with named
+  streets, a beach, docks, a plaza, a bank, a hotel, a clinic, a garage and
+  an airfield, all generated from a fixed seed.
+- **Traffic and pedestrians** — cars that drive the road grid and slow down
+  for each other, pedestrians who stroll the sidewalks and run from gunfire.
 - **Cars to steal and drive** — sedans, taxis, sports coupes, trucks and vans;
-  steal a witnessed car and the heat rises.
+  steal one in front of a witness and the heat rises.
 - **Wanted level (0–5 stars)** — police cars chase and ram you, foot cops try
   to bust you on foot. Lose them, or pay Lube &amp; Tune $250 to clear your name.
 - **Missions and a story** — five jobs with waypoints, timers and escalating
